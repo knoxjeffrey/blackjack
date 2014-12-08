@@ -1,5 +1,4 @@
 require 'pry'
-CARD_VALUES = {'Ace' => [1,11], 'Jack' => 10, 'Queen' => 10, 'King' => 10}
 player_bank_account = [100]
 total_cards_played = 0
 
@@ -27,18 +26,9 @@ def print_string(text)
   puts "\n==> #{text}"
 end
 
-def initiate_the_deck
-  deck_of_cards = {hearts: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], diamonds: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], 
-                  spades: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], clubs: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King']}
-  
-  #THIS IS IMPORTANT - can't just use '=' or 'clone' or 'Hash[DECK_OF_CARDS]' as they all create a shallow copy and changes propogates
-  #through to the deck_of_cards value.  This solution serializes the object to a string and then de-serializes it into our new object. 
-  #This way breaks the chain of references 
-  deck_one = Marshal.load(Marshal.dump(deck_of_cards))
-  deck_two = Marshal.load(Marshal.dump(deck_of_cards))
-  deck_three = Marshal.load(Marshal.dump(deck_of_cards))
-  
-  return [deck_one, deck_two, deck_three]
+def deck_of_cards
+  {hearts: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], diamonds: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], 
+    spades: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], clubs: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King']}
 end
 
 #deals a random card from the game_deck.  That card is then removed from the game_deck array, stored as a hash and returned.
@@ -58,18 +48,12 @@ def deal_a_card(from_the_deck)
   if deck_chosen_from[key_chosen_from_deck].empty?
     deck_chosen_from.delete(key_chosen_from_deck)
   end
-  
-  picked_card = { key_chosen_from_deck => value_chosen_from_deck }
+
+  picked_card = [key_chosen_from_deck, value_chosen_from_deck]
 end
 
 def remove_from_deck(which_deck, key, value)
   which_deck[key].delete(value)
-end
-
-#adds the dealt card to the player or dealer array and stored as an array
-def dealer_and_player_getting_cards(from_the_deck, card_array)
-  card_retrieved = deal_a_card(from_the_deck)
-  card_array << [card_retrieved.keys[0], card_retrieved.values[0]]
 end
 
 def display_cards_on_table(player_card_array, dealer_card_array, player_name)
@@ -90,7 +74,7 @@ def card_total_array(player_or_dealer_array)
     if card_array[1].is_a? Integer
       card_value_counter += card_array[1]
     elsif card_array[1] != 'Ace'
-      card_value_counter += CARD_VALUES[card_array[1]]
+      card_value_counter += 10
     else
       number_of_aces += 1
     end
@@ -100,48 +84,34 @@ def card_total_array(player_or_dealer_array)
   if number_of_aces == 0
     return total_value << card_value_counter
   elsif number_of_aces == 1
-    return total_value << (card_value_counter + CARD_VALUES['Ace'][0]) << (card_value_counter + CARD_VALUES['Ace'][1])
+    return total_value << (card_value_counter + 1) << (card_value_counter + 11)
   else
-    return total_value << (card_value_counter + (CARD_VALUES['Ace'][0]*number_of_aces)) << (card_value_counter + (CARD_VALUES['Ace'][0]*(number_of_aces-1)) + (CARD_VALUES['Ace'][1]))
+    return total_value << (card_value_counter + (number_of_aces)) << (card_value_counter + (number_of_aces-1) + 11)
   end
 end
 
-def player_game_logic(player_totals_array)
+def is_bust?(player_totals_array)
   if player_totals_array.size == 1
     if player_totals_array[0] > 21
-      return :bust
-    else
-      return :can_play_on
+      return true
     end
   else
     if (player_totals_array[0] > 21) && (player_totals_array[1] > 21)
-      return :bust
-    else (player_totals_array[0] <= 21) || (player_totals_array[1] <= 21)
-      return :can_play_on
+      return true
     end
   end
 end
 
-def dealer_game_logic(dealer_totals_array)
+def is_dealer_sticking?(dealer_totals_array)
   if dealer_totals_array.size == 1
-    if dealer_totals_array[0] == 21
-      return :stick
-    elsif dealer_totals_array[0] > 21
-      return :bust
-    elsif dealer_totals_array[0] <= 17
-      return :must_deal_again
-    else
-      return :stick
+    if (dealer_totals_array[0] == 21) || (dealer_totals_array[0].between?(18,20))
+      return true
     end
   else
     if (dealer_totals_array[0] == 21) || (dealer_totals_array[1] == 21)
-      return :stick
-    elsif (dealer_totals_array[0] > 21) && (dealer_totals_array[1] > 21)
-      return :bust
-    elsif (dealer_totals_array[0] <= 17) || (dealer_totals_array[1] <= 17)
-      return :must_deal_again
-    else
-      return :stick
+      return true
+    elsif (dealer_totals_array[0].between?(18,20)) || (dealer_totals_array[1].between?(18,20))
+      return true
     end
   end
 end
@@ -180,14 +150,13 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   end while !valid_value?(bet_placed, bank)
   
   #initial_deal(game_deck, player_cards, dealer_cards)
-  2.times { dealer_and_player_getting_cards(game_deck, player_cards) }
-  2.times { dealer_and_player_getting_cards(game_deck, dealer_cards) }
+  2.times { player_cards << deal_a_card(game_deck) }
+  2.times { dealer_cards << deal_a_card(game_deck) }
   
   begin
     display_cards_on_table(player_cards, dealer_cards, player_name)
     player_totals_array = card_total_array(player_cards)
-    any_more_deals = player_game_logic(player_totals_array)
-    break if any_more_deals == :bust
+    break if is_bust?(player_totals_array)
   
     begin
       print_string "#{player_name}, would you like another card? Y or N"
@@ -196,12 +165,12 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   
     if decision.downcase == 'y'
       puts `clear`
-      dealer_and_player_getting_cards(game_deck, player_cards)
+      player_cards << deal_a_card(game_deck)
     end
   
   end while decision.downcase == 'y'
 
-  if (any_more_deals == :bust)
+  if is_bust?(player_totals_array)
     new_account_value = bank[0] - bet_placed.to_i
     bank[0] = new_account_value
     print_string "#{player_name} is bust and has lost the game.  The dealer has won!"
@@ -209,21 +178,20 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   end
   
   puts `clear`
-  begin
-    print_string "   ********** The dealer is showing his cards... **********"
+  loop do
+    print_string "   ********** The dealer is playing... **********"
     display_cards_on_table(player_cards, dealer_cards, player_name)
     sleep 2
     puts `clear`
     dealer_totals_array = card_total_array(dealer_cards)
-    any_more_deals = dealer_game_logic(dealer_totals_array)
-    break if ((any_more_deals == :stick) || (any_more_deals == :bust))
-    dealer_and_player_getting_cards(game_deck, dealer_cards)
-    
-  end while any_more_deals == :must_deal_again
+    break if is_bust?(dealer_totals_array) || is_dealer_sticking?(dealer_totals_array)
+    dealer_cards << deal_a_card(game_deck)
+  end 
   
   display_cards_on_table(player_cards, dealer_cards, player_name)
 
-  if (any_more_deals == :bust)
+  dealer_totals_array = card_total_array(dealer_cards)
+  if is_bust?(dealer_totals_array)
     new_account_value = bank[0] + bet_placed.to_i
     bank[0] = new_account_value
     print_string "The dealer is bust and has lost the game. #{player_name} has won!"
@@ -244,7 +212,7 @@ sleep 2
 begin
   puts `clear`
   if replenish_deck?(total_cards_played)
-    game_deck = initiate_the_deck
+    game_deck = [deck_of_cards,deck_of_cards,deck_of_cards]
     total_cards_played = 0
     print_string "Getting the deck ready..."
     sleep 1
@@ -264,7 +232,7 @@ begin
     print_string "Your account is empty...the house always wins!"
     break
   end
-  
+
   begin
     print_string "Would you like to play again?: Y or N"
     decision = gets.chomp
