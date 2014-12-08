@@ -32,7 +32,7 @@ def initiate_the_deck
                   spades: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], clubs: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King']}
   
   #THIS IS IMPORTANT - can't just use '=' or 'clone' or 'Hash[DECK_OF_CARDS]' as they all create a shallow copy and changes propogates
-  #through to the DECK_OF_CARDS constant.  This solution serializes the object to a string and then de-serializes it into our new object. 
+  #through to the deck_of_cards value.  This solution serializes the object to a string and then de-serializes it into our new object. 
   #This way breaks the chain of references 
   deck_one = Marshal.load(Marshal.dump(deck_of_cards))
   deck_two = Marshal.load(Marshal.dump(deck_of_cards))
