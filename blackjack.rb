@@ -1,12 +1,6 @@
+require 'pry'
 CARD_VALUES = {'Ace' => [1,11], 'Jack' => 10, 'Queen' => 10, 'King' => 10}
-
-DECK_OF_CARDS = {hearts: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], diamonds: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], 
-                spades: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], clubs: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King']}
-            
-first_deck_of_cards = {}
-second_deck_of_cards = {}
-third_deck_of_cards = {}
-game_deck = []
+player_bank_account = [100]
 total_cards_played = 0
 
 def valid_decision?(the_decision)
@@ -17,30 +11,48 @@ def valid_decision?(the_decision)
   end
 end
 
+def valid_value?(the_bet_value, bank_account)
+  if the_bet_value.to_i == 0
+    print_string "You must enter a value higher than zero"
+  elsif (bank_account[0] - the_bet_value.to_i) < 0 
+    print_string "You do not have enough funds for that bet. Please enter a new bet"
+  else
+    true
+  end
+end
+
 def print_string(text)
   puts "\n==> #{text}"
 end
 
-#THIS IS IMPORTANT - can't just use '=' or 'clone' or 'Hash[DECK_OF_CARDS]' as they all create a shallow copy and changes propogates
-#through to the DECK_OF_CARDS constant.  This solution serializes the object to a string and then de-serializes it into our new object. 
-#This way breaks the chain of references  
-def initiate_the_deck(deck_one, deck_two, deck_three)
-  deck_one = Marshal.load(Marshal.dump(DECK_OF_CARDS))
-  deck_two = Marshal.load(Marshal.dump(DECK_OF_CARDS))
-  deck_three = Marshal.load(Marshal.dump(DECK_OF_CARDS))
-  the_game_deck = [deck_one, deck_two, deck_three]
-  return the_game_deck
+def initiate_the_deck
+  deck_of_cards = {hearts: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], diamonds: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], 
+                  spades: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King'], clubs: ['Ace',2,3,4,5,6,7,8,9,'Jack','Queen','King']}
+  
+  #THIS IS IMPORTANT - can't just use '=' or 'clone' or 'Hash[DECK_OF_CARDS]' as they all create a shallow copy and changes propogates
+  #through to the DECK_OF_CARDS constant.  This solution serializes the object to a string and then de-serializes it into our new object. 
+  #This way breaks the chain of references 
+  deck_one = Marshal.load(Marshal.dump(deck_of_cards))
+  deck_two = Marshal.load(Marshal.dump(deck_of_cards))
+  deck_three = Marshal.load(Marshal.dump(deck_of_cards))
+  
+  return [deck_one, deck_two, deck_three]
 end
 
 #deals a random card from the game_deck.  That card is then removed from the game_deck array, stored as a hash and returned.
 def deal_a_card(from_the_deck)
+  #delete any empty hashes from the deck array otherwise there will be an error because it will be picking a nil result
+  if from_the_deck.include?({})
+    from_the_deck.delete({})
+  end
+  
   deck_chosen_from = from_the_deck.sample
   key_chosen_from_deck = deck_chosen_from.keys.sample
   value_chosen_from_deck = deck_chosen_from[key_chosen_from_deck].sample
   
   remove_from_deck(deck_chosen_from, key_chosen_from_deck, value_chosen_from_deck)
-  
-  #delete any hash key with and empty array value
+
+  #delete any hash key with an empty array value otherwise there will be an error because it will be picking a nil result
   if deck_chosen_from[key_chosen_from_deck].empty?
     deck_chosen_from.delete(key_chosen_from_deck)
   end
@@ -58,30 +70,12 @@ def dealer_and_player_getting_cards(from_the_deck, card_array)
   card_array << [card_retrieved.keys[0], card_retrieved.values[0]]
 end
 
-#uses a recursive function to deal a default 2 cards at the start of the game. 2 cards will always be the case so when calling the method
-#we don't need to issue the number of deals.
-def initial_deal(number_of_deals=2, deck, player_card_array, dealer_card_array)
-  dealer_and_player_getting_cards(deck, player_card_array)
-  dealer_and_player_getting_cards(deck, dealer_card_array)
-  initial_deal(number_of_deals=1, deck, player_card_array, dealer_card_array) if number_of_deals > 1
-end
-
-def cards_on_table(player_card_array, dealer_card_array, player_name)
+def display_cards_on_table(player_card_array, dealer_card_array, player_name)
   print_string "The dealers cards are:"
   dealer_card_array.each { |card_array| puts "#{card_array[1]} of #{card_array[0]}"}
-  if card_total_array(dealer_card_array).size < 2
-    print_string "The dealers total is #{card_total_array(dealer_card_array)[0]}"
-  else
-    print_string "The dealers total is #{card_total_array(dealer_card_array)[0]} or #{card_total_array(dealer_card_array)[1]}"
-  end
   
   print_string "#{player_name}'s cards are:"
   player_card_array.each { |card_array| puts "#{card_array[1]} of #{card_array[0]}"}
-  if card_total_array(player_card_array).size < 2
-    print_string "#{player_name}'s total is #{card_total_array(player_card_array)[0]}"
-  else
-    print_string "#{player_name}'s total is #{card_total_array(player_card_array)[0]} or #{card_total_array(player_card_array)[1]}"
-  end
 end
 
 #returns an array with the total in it. If no Aces there is only one value in the array. With 1 ace or more there are 2 values in the array due
@@ -132,8 +126,10 @@ def dealer_game_logic(dealer_totals_array)
       return :stick
     elsif dealer_totals_array[0] > 21
       return :bust
-    elsif dealer_totals_array[0] < 17
+    elsif dealer_totals_array[0] <= 17
       return :must_deal_again
+    else
+      return :stick
     end
   else
     if (dealer_totals_array[0] == 21) || (dealer_totals_array[1] == 21)
@@ -148,13 +144,17 @@ def dealer_game_logic(dealer_totals_array)
   end
 end
 
-def declare_result(name, player_card_values, dealer_card_values)
+def compare_hands(name, player_bank_account, the_bet_value, player_card_values, dealer_card_values)
   player_best_hand = player_card_values.select { |card_value| card_value <= 21 }
   dealer_best_hand = dealer_card_values.select { |card_value| card_value <= 21 }
   
   if player_best_hand.max > dealer_best_hand.max
+    new_account_value = player_bank_account[0] + the_bet_value.to_i
+    player_bank_account[0] = new_account_value
     print_string "Congratulations #{name}, you have won the game!"
   elsif player_best_hand.max < dealer_best_hand.max
+    new_account_value = player_bank_account[0] - the_bet_value.to_i
+    player_bank_account[0] = new_account_value
      print_string "Sorry #{name}, the dealer has won the game."
   else
     print_string "It's a tie! Have a go at beating the dealer again #{name}."
@@ -162,19 +162,27 @@ def declare_result(name, player_card_values, dealer_card_values)
 end
 
 def replenish_deck?(total_number_of_cards_played)
-  if (total_number_of_cards_played > 136) || (total_number_of_cards_played == 0)
+  if (total_number_of_cards_played > 120) || (total_number_of_cards_played == 0)
     true
   else
     false
   end
 end
 
-def blackjack(player_name, game_deck, player_cards, dealer_cards)
+def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   puts `clear`
-  initial_deal(game_deck, player_cards, dealer_cards)
+
+  begin
+   print_string "Place your bet! You have £#{bank[0]} in your account"
+   bet_placed = gets.chomp
+  end while !valid_value?(bet_placed, bank)
+  
+  #initial_deal(game_deck, player_cards, dealer_cards)
+  2.times { dealer_and_player_getting_cards(game_deck, player_cards) }
+  2.times { dealer_and_player_getting_cards(game_deck, dealer_cards) }
   
   begin
-    cards_on_table(player_cards, dealer_cards, player_name)
+    display_cards_on_table(player_cards, dealer_cards, player_name)
     player_totals_array = card_total_array(player_cards)
     any_more_deals = player_game_logic(player_totals_array)
     break if any_more_deals == :bust
@@ -192,51 +200,72 @@ def blackjack(player_name, game_deck, player_cards, dealer_cards)
   end while decision.downcase == 'y'
 
   if (any_more_deals == :bust)
+    new_account_value = bank[0] - bet_placed.to_i
+    bank[0] = new_account_value
     print_string "#{player_name} is bust and has lost the game.  The dealer has won!"
     return
   end
-
+  
+  puts `clear`
   begin
-    cards_on_table(player_cards, dealer_cards, player_name)
+    print_string "   ********** The dealer is showing his cards... **********"
+    display_cards_on_table(player_cards, dealer_cards, player_name)
+    sleep 2
+    puts `clear`
     dealer_totals_array = card_total_array(dealer_cards)
     any_more_deals = dealer_game_logic(dealer_totals_array)
     break if ((any_more_deals == :stick) || (any_more_deals == :bust))
-    puts `clear`
     dealer_and_player_getting_cards(game_deck, dealer_cards)
+    
   end while any_more_deals == :must_deal_again
+  
+  display_cards_on_table(player_cards, dealer_cards, player_name)
 
   if (any_more_deals == :bust)
+    new_account_value = bank[0] + bet_placed.to_i
+    bank[0] = new_account_value
     print_string "The dealer is bust and has lost the game. #{player_name} has won!"
     return
   end
   
-  declare_result(player_name, player_totals_array, dealer_totals_array)
+  compare_hands(player_name, bank, bet_placed, player_totals_array, dealer_totals_array)
+  
+  return bank
 end
 
 puts `clear`
 print_string "Welcome to this game of Blackjack.  Please enter your name:"
 the_player_name = gets.chomp
+print_string "You have £#{player_bank_account[0]} in your account. Let's play!"
+sleep 2
 
 begin
   puts `clear`
   if replenish_deck?(total_cards_played)
-    game_deck = initiate_the_deck(first_deck_of_cards, second_deck_of_cards, third_deck_of_cards)
+    game_deck = initiate_the_deck
     total_cards_played = 0
     print_string "Getting the deck ready..."
     sleep 1
     print_string "waiting..."
     sleep 1
     print_string "Ready to play!"
+    sleep 1
   end
   
   player_cards = []
   dealer_cards = []
-  blackjack(the_player_name, game_deck, player_cards, dealer_cards)
+  blackjack(the_player_name, player_bank_account, game_deck, player_cards, dealer_cards)
 
   total_cards_played = total_cards_played + player_cards.size + dealer_cards.size
+  
+  if player_bank_account[0] == 0
+    print_string "Your account is empty...the house always wins!"
+    break
+  end
   
   begin
     print_string "Would you like to play again?: Y or N"
     decision = gets.chomp
   end while !valid_decision?(decision)
-end while decision.downcase == 'y'  
+end while decision.downcase == 'y'
+print_string "Thanks for playing #{the_player_name}"  
