@@ -12,7 +12,9 @@ def valid_decision?(the_decision)
 end
 
 def valid_value?(the_bet_value, bank_account)
-  if the_bet_value.to_i == 0
+  if the_bet_value =~ /\D/
+    print_string "You must enter a valid number"
+  elsif the_bet_value.to_i == 0
     print_string "You must enter a value higher than zero"
   elsif (bank_account[0] - the_bet_value.to_i) < 0 
     print_string "You do not have enough funds for that bet. Please enter a new bet"
