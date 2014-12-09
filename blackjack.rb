@@ -149,7 +149,6 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
    bet_placed = gets.chomp
   end while !valid_value?(bet_placed, bank)
   
-  #initial_deal(game_deck, player_cards, dealer_cards)
   2.times { player_cards << deal_a_card(game_deck) }
   2.times { dealer_cards << deal_a_card(game_deck) }
   
@@ -176,7 +175,7 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
     print_string "#{player_name} is bust and has lost the game.  The dealer has won!"
     return
   end
-  
+
   puts `clear`
   loop do
     print_string "   ********** The dealer is playing... **********"
