@@ -174,18 +174,20 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
     display_cards_on_table(player_cards, dealer_cards, player_name)
     sleep 2
     puts `clear`
-    break if is_bust?(dealer_total)
+    
+    if is_bust?(dealer_total)
+      display_cards_on_table(player_cards, dealer_cards, player_name)
+      adjust_bank('win', bank, bet_placed)
+      print_string "The dealer is bust and has lost the game. #{player_name} has won!"
+      return
+    end
+    
     dealer_cards << deal_a_card(game_deck)
   end 
   
   display_cards_on_table(player_cards, dealer_cards, player_name)
 
   dealer_total = card_total(dealer_cards)
-  if is_bust?(dealer_total)
-    adjust_bank('win', bank, bet_placed)
-    print_string "The dealer is bust and has lost the game. #{player_name} has won!"
-    return
-  end
   ###end of dealers turn###
   
   compare_hands(player_name, bank, bet_placed, player_total, dealer_total)
