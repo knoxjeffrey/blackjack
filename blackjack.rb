@@ -87,14 +87,14 @@ def card_total(player_or_dealer_array)
   card_value_counter
 end
 
-def is_bust?(player_total)
-  if player_total > 21
+def is_bust?(total)
+  if total > 21
     return true
   end
 end
 
 def is_dealer_sticking?(dealer_total)
-  if (dealer_total == 21) || (dealer_total.between?(18,20))
+  if dealer_total.between?(18,21)
     return true
   end
 end
