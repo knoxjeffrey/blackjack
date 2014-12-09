@@ -64,72 +64,60 @@ def display_cards_on_table(player_card_array, dealer_card_array, player_name)
   player_card_array.each { |card_array| puts "#{card_array[1]} of #{card_array[0]}"}
 end
 
-#returns an array with the total in it. If no Aces there is only one value in the array. With 1 ace or more there are 2 values in the array due
-#to the ace being either a 1 or 11
-def card_total_array(player_or_dealer_array)
+#returns a value with the hand total in it. 
+def card_total(player_or_dealer_array)
+  value_array = player_or_dealer_array.map { |v| v[1] }
   card_value_counter = 0
-  number_of_aces = 0
-  total_value = []
-  player_or_dealer_array.each do |card_array|
-    if card_array[1].is_a? Integer
-      card_value_counter += card_array[1]
-    elsif card_array[1] != 'Ace'
+  
+  value_array.each do |value|
+    if value.is_a? Integer
+      card_value_counter += value
+    elsif value != 'Ace'
       card_value_counter += 10
     else
-      number_of_aces += 1
+      card_value_counter += 11
     end
   end
-  #only 1 ace can ever be used as 11 otherwise the total will be over 21. Therefore the last option below has all aces as 1 or 1 ace as 11 and 
-  #the rest as 1
-  if number_of_aces == 0
-    return total_value << card_value_counter
-  elsif number_of_aces == 1
-    return total_value << (card_value_counter + 1) << (card_value_counter + 11)
-  else
-    return total_value << (card_value_counter + (number_of_aces)) << (card_value_counter + (number_of_aces-1) + 11)
-  end
-end
-
-def is_bust?(player_totals_array)
-  if player_totals_array.size == 1
-    if player_totals_array[0] > 21
-      return true
-    end
-  else
-    if (player_totals_array[0] > 21) && (player_totals_array[1] > 21)
-      return true
-    end
-  end
-end
-
-def is_dealer_sticking?(dealer_totals_array)
-  if dealer_totals_array.size == 1
-    if (dealer_totals_array[0] == 21) || (dealer_totals_array[0].between?(18,20))
-      return true
-    end
-  else
-    if (dealer_totals_array[0] == 21) || (dealer_totals_array[1] == 21)
-      return true
-    elsif (dealer_totals_array[0].between?(18,20)) || (dealer_totals_array[1].between?(18,20))
-      return true
-    end
-  end
-end
-
-def compare_hands(name, player_bank_account, the_bet_value, player_card_values, dealer_card_values)
-  player_best_hand = player_card_values.select { |card_value| card_value <= 21 }
-  dealer_best_hand = dealer_card_values.select { |card_value| card_value <= 21 }
   
-  if player_best_hand.max > dealer_best_hand.max
-    new_account_value = player_bank_account[0] + the_bet_value.to_i
-    player_bank_account[0] = new_account_value
+  #decided total based on total number of aces. Will keep adjusting ace value to 1 until the toal is 21 or under
+  value_array.select { |v| v == 'Ace'}.count.times do
+    card_value_counter -= 10 if card_value_counter > 21
+  end
+  
+  card_value_counter
+end
+
+def is_bust?(player_total)
+  if player_total > 21
+    return true
+  end
+end
+
+def is_dealer_sticking?(dealer_total)
+  if (dealer_total == 21) || (dealer_total.between?(18,20))
+    return true
+  end
+end
+
+def compare_hands(name, player_bank_account, the_bet_value, player_card_value, dealer_card_value) 
+  if player_card_value > dealer_card_value
+    adjust_bank('win', player_bank_account, the_bet_value)
     print_string "Congratulations #{name}, you have won the game!"
-  elsif player_best_hand.max < dealer_best_hand.max
-    new_account_value = player_bank_account[0] - the_bet_value.to_i
-    player_bank_account[0] = new_account_value
-     print_string "Sorry #{name}, the dealer has won the game."
+  elsif player_card_value < dealer_card_value
+    adjust_bank('lose', player_bank_account, the_bet_value)
+    print_string "Sorry #{name}, the dealer has won the game."
   else
     print_string "It's a tie! Have a go at beating the dealer again #{name}."
+  end
+end
+
+def adjust_bank(win_lose, player_bank_account, the_bet_value)
+  if win_lose == 'win'
+    new_account_value = player_bank_account[0] + the_bet_value.to_i
+    player_bank_account[0] = new_account_value
+  else win_lose == 'lose'
+    new_account_value = player_bank_account[0] - the_bet_value.to_i
+    player_bank_account[0] = new_account_value
   end
 end
 
@@ -152,10 +140,11 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   2.times { player_cards << deal_a_card(game_deck) }
   2.times { dealer_cards << deal_a_card(game_deck) }
   
+  ###players turn###
   begin
     display_cards_on_table(player_cards, dealer_cards, player_name)
-    player_totals_array = card_total_array(player_cards)
-    break if is_bust?(player_totals_array)
+    player_total = card_total(player_cards)
+    break if is_bust?(player_total)
   
     begin
       print_string "#{player_name}, would you like another card? Y or N"
@@ -169,35 +158,37 @@ def blackjack(player_name, bank, game_deck, player_cards, dealer_cards)
   
   end while decision.downcase == 'y'
 
-  if is_bust?(player_totals_array)
-    new_account_value = bank[0] - bet_placed.to_i
-    bank[0] = new_account_value
+  if is_bust?(player_total)
+    adjust_bank('lose', bank, bet_placed)
     print_string "#{player_name} is bust and has lost the game.  The dealer has won!"
     return
   end
-
+  ###end of players turn###
+  
+  ###dealers turn###
   puts `clear`
   loop do
+    dealer_total = card_total(dealer_cards)
+    break if is_dealer_sticking?(dealer_total)
     print_string "   ********** The dealer is playing... **********"
     display_cards_on_table(player_cards, dealer_cards, player_name)
     sleep 2
     puts `clear`
-    dealer_totals_array = card_total_array(dealer_cards)
-    break if is_bust?(dealer_totals_array) || is_dealer_sticking?(dealer_totals_array)
+    break if is_bust?(dealer_total)
     dealer_cards << deal_a_card(game_deck)
   end 
   
   display_cards_on_table(player_cards, dealer_cards, player_name)
 
-  dealer_totals_array = card_total_array(dealer_cards)
-  if is_bust?(dealer_totals_array)
-    new_account_value = bank[0] + bet_placed.to_i
-    bank[0] = new_account_value
+  dealer_total = card_total(dealer_cards)
+  if is_bust?(dealer_total)
+    adjust_bank('win', bank, bet_placed)
     print_string "The dealer is bust and has lost the game. #{player_name} has won!"
     return
   end
+  ###end of dealers turn###
   
-  compare_hands(player_name, bank, bet_placed, player_totals_array, dealer_totals_array)
+  compare_hands(player_name, bank, bet_placed, player_total, dealer_total)
   
   return bank
 end
