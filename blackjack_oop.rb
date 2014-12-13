@@ -39,12 +39,6 @@ end
 
 module HandTotal
   
-  def self.is_bust?(cards_held_array)
-    if card_total(cards_held_array) > 21
-      return true
-    end
-  end
-  
   #returns a value with the hand total in it. 
   def self.card_total(cards_held_array)
     value_array = cards_held_array.map { |v| v[1] }
@@ -61,7 +55,7 @@ module HandTotal
     end
   
     #decided total based on total number of aces. Will keep adjusting ace value to 1 until the toal is 21 or under
-    value_array.select { |v| v == 'Ace'}.count.times do
+    value_array.select { |v| v == 'A'}.count.times do
       card_value_counter -= 10 if card_value_counter > 21
     end
   
@@ -162,7 +156,16 @@ class Dealer
     @name = name
     @cards_held = []
   end
-
+  
+  def is_dealer_sticking?(dealer_total)
+    if dealer_total.between?(18,21)
+      return true
+    end
+  end
+  
+  def clear_hand
+    self.cards_held = []
+  end
 end
 
 class Player
@@ -173,6 +176,10 @@ class Player
     @name = name
     @@account = Bank.new(amount_in_bank)
     @cards_held = []
+  end
+  
+  def clear_hand
+    self.cards_held = []
   end
   
   def amount_in_account
@@ -209,9 +216,29 @@ class GameFlow
     @total_cards_played = 0
   end
   
-  def play
+  def show_cards_on_table(dealer_cards_held, player_cards_held)
+    TextFormat.print_string "The dealers cards are:"
+    blackjack_deck.display_cards(dealer_cards_held)
+  
+    TextFormat.print_string "#{player.name}'s cards are:"
+    blackjack_deck.display_cards(player_cards_held)
+  end
+  
+  def declare_result(bet_placed)
+    if HandTotal.card_total(player.cards_held) > HandTotal.card_total(dealer.cards_held)
+      player.win_money(bet_placed)
+      TextFormat.print_string "Congratulations #{name}, you have won the game!"
+    elsif HandTotal.card_total(player.cards_held) < HandTotal.card_total(dealer.cards_held)
+      player.lose_money(bet_placed)
+      TextFormat.print_string "Sorry #{player.name}, the dealer has won the game."
+    else
+      TextFormat.print_string "It's a tie! Have a go at beating the dealer again #{player.name}."
+    end
+  end
+  
+  def game_sequence
     TextFormat.print_string "#{player.name} you have £#{player.amount_in_account} in your account. Let's play!"
-    
+  
     puts `clear`
     if (total_cards_played > (NUMBER_OF_DECKS_FOR_GAME*40)) || (total_cards_played == 0)
       blackjack_deck.replenish_deck(NUMBER_OF_DECKS_FOR_GAME)
@@ -223,50 +250,97 @@ class GameFlow
       sleep 1
 =end
     end
-    
+  
     puts `clear`
+    player.clear_hand
+    dealer.clear_hand
     begin
       TextFormat.print_string "Place your bet! You have £#{player.amount_in_account} in your account"
       bet_placed = gets.chomp
     end while !MoneyChecker.correct_money_entered?(bet_placed, player.amount_in_account)
-    
+  
     puts `clear`
-    
+  
     2.times { player.cards_held << blackjack_deck.deal_card }
     2.times { dealer.cards_held << blackjack_deck.deal_card }
-    
+  
+    dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[0]]
+    show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
+  
     if HandTotal.card_total(player.cards_held) == 21
       TextFormat.print_string "Well done #{player.name}, you have won the game!"
       player.win_money(bet_placed.to_i)
       return
     end
-    
+  
+    puts `clear`
+  
     begin
-      break if HandTotal.is_bust?(player.cards_held)
-      puts `clear`
-      TextFormat.print_string "The dealers cards are:"
-      blackjack_deck.display_cards([blackjack_deck.unturned_card, dealer.cards_held[0]])
-    
-      TextFormat.print_string "#{player.name}'s cards are:"
-      blackjack_deck.display_cards(player.cards_held)
+      show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
+      break if HandTotal.card_total(player.cards_held) > 21
     
       begin
         TextFormat.print_string "#{player.name}, would you like another card? Y or N"
         decision = gets.chomp
       end while !TextFormat.entered_correct_choice?(decision)
-      
+    
       if decision.downcase == 'y'
-        #puts `clear`
+        puts `clear`
         player.cards_held << blackjack_deck.deal_card
       end
-  
+
     end while decision.downcase == 'y'
 
-    if HandTotal.is_bust?(player.cards_held)
+    if HandTotal.card_total(player.cards_held) > 21
       player.lose_money(bet_placed.to_i)
       TextFormat.print_string "#{player.name} is bust and has lost the game.  #{dealer.name} has won!"
       return
     end
+  
+    puts `clear`
+    loop do
+      dealer_total = HandTotal.card_total(dealer.cards_held)
+      break if dealer.is_dealer_sticking?(dealer_total)
+      TextFormat.print_string "   ********** The dealer is playing... **********"
+      show_cards_on_table(dealer.cards_held, player.cards_held)
+      sleep 2
+      puts `clear`
+  
+      if HandTotal.card_total(dealer.cards_held) > 21
+        show_cards_on_table(dealer.cards_held, player.cards_held)
+        player.win_money(bet_placed.to_i)
+        TextFormat.print_string "The dealer is bust and has lost the game. #{player.name} has won!"
+        return
+      end
+  
+      dealer.cards_held << blackjack_deck.deal_card
+    end 
+
+    show_cards_on_table(dealer.cards_held, player.cards_held)
+  
+    declare_result(bet_placed.to_i)
+  
+
+    self.total_cards_played += player.cards_held.size + dealer.cards_held.size
+
+    
+  end
+  
+  def play
+    begin
+      if player.amount_in_account == 0
+        TextFormat.print_string "Your account is empty...the house always wins!"
+        TextFormat.print_string "Thanks for playing #{player.name}" 
+        return
+      end
+      game_sequence
+      begin
+        TextFormat.print_string "Would you like to play again?: Y or N"
+        decision = gets.chomp
+      end while !TextFormat.entered_correct_choice?(decision)
+    end while decision.downcase == 'y'
+  
+    TextFormat.print_string "Thanks for playing #{player.name}" 
   end
 end
 
