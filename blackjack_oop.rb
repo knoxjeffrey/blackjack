@@ -101,14 +101,16 @@ class DeckHandler
     game_deck.pop
   end
   
+  #this method allows the cards to be printed horizontally on the screen. The top part of each card is held in card_images[0] down to the last part
+  #of each card being held in card_images[4]. Basically, builds a card image up line by line.
   def display_cards(card_array)
     card_images = [[],[],[],[],[]]
     card_array.each do |card|
       card_images.each_index { |index| card_images[index] << make_card_image(card)[index] }
     end
     
-    card_images.each do |person|
-      puts person.join(" ")
+    card_images.each do |image_section_of_card|
+      puts image_section_of_card.join(" ")
     end
   end
   
@@ -119,15 +121,15 @@ class DeckHandler
   private
   
   def make_card_image(card_array)
-    array = []
+    card_image_array = []
     
-    array << "┌─────┐"
-    array << "│#{card_array[1]}    │"
-    array << "│  #{card_array[0]}  │"
-    array << "│    #{card_array[1]}│"
-    array << "└─────┘"
+    card_image_array << "┌─────┐"
+    card_image_array << "│#{card_array[1]}    │"
+    card_image_array << "│  #{card_array[0]}  │"
+    card_image_array << "│    #{card_array[1]}│"
+    card_image_array << "└─────┘"
     
-    array
+    card_image_array
   end
 end
 
@@ -169,12 +171,12 @@ class Dealer
 end
 
 class Player
-  attr_reader :name
+  attr_reader :name, :account
   attr_accessor :cards_held
   
   def initialize(name, amount_in_bank)
     @name = name
-    @@account = Bank.new(amount_in_bank)
+    @account = Bank.new(amount_in_bank)
     @cards_held = []
   end
   
@@ -183,15 +185,15 @@ class Player
   end
   
   def amount_in_account
-    @@account.bank
+    account.bank
   end
   
   def win_money(amount)
-    @@account.deposit_money(amount)
+    account.deposit_money(amount)
   end
   
   def lose_money(amount)
-    @@account.withdraw_money(amount)
+    account.withdraw_money(amount)
   end
 end
 
@@ -202,8 +204,8 @@ class GameFlow
   
   NUMBER_OF_DECKS_FOR_GAME = 3
   
-  attr_reader :player, :dealer
-  attr_accessor :blackjack_deck, :total_cards_played
+  attr_reader :player, :dealer, :blackjack_deck
+  attr_accessor :bet_placed
   
   def initialize
     puts `clear`
@@ -213,7 +215,7 @@ class GameFlow
     @player = Player.new(player_name,100)
     @dealer = Dealer.new('Kryton')
     @blackjack_deck = DeckHandler.new
-    @total_cards_played = 0
+    @bet_placed = 0
   end
   
   def show_cards_on_table(dealer_cards_held, player_cards_held)
@@ -227,7 +229,7 @@ class GameFlow
   def declare_result(bet_placed)
     if HandTotal.card_total(player.cards_held) > HandTotal.card_total(dealer.cards_held)
       player.win_money(bet_placed)
-      TextFormat.print_string "Congratulations #{name}, you have won the game!"
+      TextFormat.print_string "Congratulations #{player.name}, you have won the game!"
     elsif HandTotal.card_total(player.cards_held) < HandTotal.card_total(dealer.cards_held)
       player.lose_money(bet_placed)
       TextFormat.print_string "Sorry #{player.name}, the dealer has won the game."
@@ -236,19 +238,15 @@ class GameFlow
     end
   end
   
-  def game_sequence
+  def game_setup
     TextFormat.print_string "#{player.name} you have £#{player.amount_in_account} in your account. Let's play!"
   
     puts `clear`
-    if (total_cards_played > (NUMBER_OF_DECKS_FOR_GAME*40)) || (total_cards_played == 0)
+    if (blackjack_deck.game_deck.size == 0) || (blackjack_deck.game_deck.size <= 30)
       blackjack_deck.replenish_deck(NUMBER_OF_DECKS_FOR_GAME)
-      total_cards_played = 0
-=begin
-      TextFormat.print_string "Getting the deck ready..."
-      sleep 1
-      TextFormat.print_string "Ready to play!"
-      sleep 1
-=end
+
+      TextFormat.print_string "...New deck is ready"
+      sleep 2
     end
   
     puts `clear`
@@ -256,7 +254,7 @@ class GameFlow
     dealer.clear_hand
     begin
       TextFormat.print_string "Place your bet! You have £#{player.amount_in_account} in your account"
-      bet_placed = gets.chomp
+      self.bet_placed = gets.chomp
     end while !MoneyChecker.correct_money_entered?(bet_placed, player.amount_in_account)
   
     puts `clear`
@@ -264,18 +262,37 @@ class GameFlow
     2.times { player.cards_held << blackjack_deck.deal_card }
     2.times { dealer.cards_held << blackjack_deck.deal_card }
   
-    dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[0]]
+    dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[1]]
     show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
+   
+  end
   
+  def blackjack_on_first_draw?
     if HandTotal.card_total(player.cards_held) == 21
       TextFormat.print_string "Well done #{player.name}, you have won the game!"
       player.win_money(bet_placed.to_i)
-      return
+      true 
     end
+  end
   
-    puts `clear`
+  def is_player_bust?(hand_held)
+    if HandTotal.card_total(hand_held) > 21
+      player.lose_money(bet_placed.to_i)
+      TextFormat.print_string "#{player.name} is bust and has lost the game.  #{dealer.name} has won!"
+      true
+    end
+  end
   
+  def is_dealer_bust?(hand_held)
+    if HandTotal.card_total(hand_held) > 21
+      player.win_money(bet_placed.to_i)
+      true
+    end
+  end
+  
+  def player_round
     begin
+      dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[1]]
       show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
       break if HandTotal.card_total(player.cards_held) > 21
     
@@ -290,13 +307,9 @@ class GameFlow
       end
 
     end while decision.downcase == 'y'
-
-    if HandTotal.card_total(player.cards_held) > 21
-      player.lose_money(bet_placed.to_i)
-      TextFormat.print_string "#{player.name} is bust and has lost the game.  #{dealer.name} has won!"
-      return
-    end
+  end
   
+  def dealer_round
     puts `clear`
     loop do
       dealer_total = HandTotal.card_total(dealer.cards_held)
@@ -305,35 +318,44 @@ class GameFlow
       show_cards_on_table(dealer.cards_held, player.cards_held)
       sleep 2
       puts `clear`
-  
-      if HandTotal.card_total(dealer.cards_held) > 21
+      
+      if is_dealer_bust?(dealer.cards_held)
         show_cards_on_table(dealer.cards_held, player.cards_held)
-        player.win_money(bet_placed.to_i)
-        TextFormat.print_string "The dealer is bust and has lost the game. #{player.name} has won!"
-        return
+        return TextFormat.print_string "The dealer is bust. #{player.name} has won!" 
       end
   
       dealer.cards_held << blackjack_deck.deal_card
     end 
-
-    show_cards_on_table(dealer.cards_held, player.cards_held)
-  
-    declare_result(bet_placed.to_i)
-  
-
-    self.total_cards_played += player.cards_held.size + dealer.cards_held.size
-
-    
   end
   
-  def play
+  def game_sequence
+    
+      game_setup
+      return if blackjack_on_first_draw?
+  
+      puts `clear`
+  
+      player_round
+      return if is_player_bust?(player.cards_held)
+    
+      dealer_round
+      return if is_dealer_bust?(dealer.cards_held)
+    
+      show_cards_on_table(dealer.cards_held, player.cards_held)
+  
+      declare_result(bet_placed.to_i)
+  end
+  
+  def game
     begin
       if player.amount_in_account == 0
         TextFormat.print_string "Your account is empty...the house always wins!"
         TextFormat.print_string "Thanks for playing #{player.name}" 
         return
       end
+      
       game_sequence
+
       begin
         TextFormat.print_string "Would you like to play again?: Y or N"
         decision = gets.chomp
@@ -344,4 +366,4 @@ class GameFlow
   end
 end
 
-GameFlow.new.play
+GameFlow.new.game
