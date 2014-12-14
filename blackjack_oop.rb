@@ -1,5 +1,3 @@
-require 'pry'
-
 module TextFormat
   def self.print_string(text)
     puts "\n*** #{text} ***"
@@ -101,7 +99,7 @@ class DeckHandler
     game_deck.pop
   end
   
-  #this method allows the cards to be printed horizontally on the screen. The top part of each card is held in card_images[0] down to the last part
+  #this method allows the hand of cards to be printed horizontally on the screen. The top part of each card is held in card_images[0] down to the last part
   #of each card being held in card_images[4]. Basically, builds a card image up line by line.
   def display_cards(card_array)
     card_images = [[],[],[],[],[]]
@@ -226,18 +224,6 @@ class GameFlow
     blackjack_deck.display_cards(player_cards_held)
   end
   
-  def declare_result(bet_placed)
-    if HandTotal.card_total(player.cards_held) > HandTotal.card_total(dealer.cards_held)
-      player.win_money(bet_placed)
-      TextFormat.print_string "Congratulations #{player.name}, you have won the game!"
-    elsif HandTotal.card_total(player.cards_held) < HandTotal.card_total(dealer.cards_held)
-      player.lose_money(bet_placed)
-      TextFormat.print_string "Sorry #{player.name}, the dealer has won the game."
-    else
-      TextFormat.print_string "It's a tie! Have a go at beating the dealer again #{player.name}."
-    end
-  end
-  
   def game_setup
     TextFormat.print_string "#{player.name} you have £#{player.amount_in_account} in your account. Let's play!"
   
@@ -312,10 +298,11 @@ class GameFlow
   def dealer_round
     puts `clear`
     loop do
-      dealer_total = HandTotal.card_total(dealer.cards_held)
-      break if dealer.is_dealer_sticking?(dealer_total)
       TextFormat.print_string "   ********** The dealer is playing... **********"
       show_cards_on_table(dealer.cards_held, player.cards_held)
+      dealer_total = HandTotal.card_total(dealer.cards_held)
+      break if dealer.is_dealer_sticking?(dealer_total)
+
       sleep 2
       puts `clear`
       
@@ -326,6 +313,18 @@ class GameFlow
   
       dealer.cards_held << blackjack_deck.deal_card
     end 
+  end
+  
+  def declare_result(bet_placed)
+    if HandTotal.card_total(player.cards_held) > HandTotal.card_total(dealer.cards_held)
+      player.win_money(bet_placed)
+      TextFormat.print_string "Congratulations #{player.name}, you have won the game!"
+    elsif HandTotal.card_total(player.cards_held) < HandTotal.card_total(dealer.cards_held)
+      player.lose_money(bet_placed)
+      TextFormat.print_string "Sorry #{player.name}, the dealer has won the game."
+    else
+      TextFormat.print_string "It's a tie! Have a go at beating the dealer again #{player.name}."
+    end
   end
   
   def game_sequence
@@ -340,7 +339,9 @@ class GameFlow
     
       dealer_round
       return if is_dealer_bust?(dealer.cards_held)
-    
+      
+      sleep 1
+      puts `clear`
       show_cards_on_table(dealer.cards_held, player.cards_held)
   
       declare_result(bet_placed.to_i)
