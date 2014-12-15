@@ -65,6 +65,10 @@ module Hand
   def receive_card(card)
     cards_held << card
   end
+  
+  def clear_hand
+    self.cards_held = []
+  end
 end
 
 class Cards
@@ -168,10 +172,6 @@ class Dealer
   def is_dealer_sticking?(dealer_total)
     dealer_total.between?(18,21)
   end
-  
-  def clear_hand
-    self.cards_held = []
-  end
 end
 
 class Player
@@ -184,10 +184,6 @@ class Player
     @name = name
     @account = Bank.new(amount_in_bank)
     @cards_held = []
-  end
-  
-  def clear_hand
-    self.cards_held = []
   end
   
   def amount_in_account
