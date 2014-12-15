@@ -277,6 +277,7 @@ class GameFlow
   def is_dealer_bust?(hand_held)
     if HandTotal.card_total(hand_held) > BLACKJACK_AMOUNT
       player.win_money(bet_placed.to_i)
+      TextFormat.print_string "The dealer is bust. #{player.name} has won!" 
       true
     end
   end
@@ -307,15 +308,10 @@ class GameFlow
       show_cards_on_table(dealer.cards_held, player.cards_held)
       dealer_total = HandTotal.card_total(dealer.cards_held)
       break if dealer.is_dealer_sticking?(dealer_total)
-
+      break if HandTotal.card_total(dealer.cards_held) > BLACKJACK_AMOUNT
       sleep 2
       puts `clear`
-      
-      if is_dealer_bust?(dealer.cards_held)
-        show_cards_on_table(dealer.cards_held, player.cards_held)
-        return TextFormat.print_string "The dealer is bust. #{player.name} has won!" 
-      end
-  
+
       dealer.receive_card(blackjack_deck.deal_card)
     end 
   end
