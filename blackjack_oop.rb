@@ -61,6 +61,12 @@ module HandTotal
   end
 end
 
+module Hand
+  def receive_card(card)
+    cards_held << card
+  end
+end
+
 class Cards
   attr_reader :suits, :values
   def initialize
@@ -149,6 +155,8 @@ class Bank
 end
 
 class Dealer
+  include Hand
+  
   attr_reader :name
   attr_accessor :cards_held
   
@@ -158,9 +166,7 @@ class Dealer
   end
   
   def is_dealer_sticking?(dealer_total)
-    if dealer_total.between?(18,21)
-      return true
-    end
+    dealer_total.between?(18,21)
   end
   
   def clear_hand
@@ -169,6 +175,8 @@ class Dealer
 end
 
 class Player
+  include Hand
+  
   attr_reader :name, :account
   attr_accessor :cards_held
   
@@ -201,6 +209,7 @@ class GameFlow
   include HandTotal
   
   NUMBER_OF_DECKS_FOR_GAME = 3
+  BLACKJACK_AMOUNT = 21
   
   attr_reader :player, :dealer, :blackjack_deck
   attr_accessor :bet_placed
@@ -245,8 +254,8 @@ class GameFlow
   
     puts `clear`
   
-    2.times { player.cards_held << blackjack_deck.deal_card }
-    2.times { dealer.cards_held << blackjack_deck.deal_card }
+    2.times { player.receive_card(blackjack_deck.deal_card) }
+    2.times { dealer.receive_card(blackjack_deck.deal_card) }
   
     dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[1]]
     show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
@@ -254,7 +263,7 @@ class GameFlow
   end
   
   def blackjack_on_first_draw?
-    if HandTotal.card_total(player.cards_held) == 21
+    if HandTotal.card_total(player.cards_held) == BLACKJACK_AMOUNT
       TextFormat.print_string "Well done #{player.name}, you have won the game!"
       player.win_money(bet_placed.to_i)
       true 
@@ -262,7 +271,7 @@ class GameFlow
   end
   
   def is_player_bust?(hand_held)
-    if HandTotal.card_total(hand_held) > 21
+    if HandTotal.card_total(hand_held) > BLACKJACK_AMOUNT
       player.lose_money(bet_placed.to_i)
       TextFormat.print_string "#{player.name} is bust and has lost the game.  #{dealer.name} has won!"
       true
@@ -270,7 +279,7 @@ class GameFlow
   end
   
   def is_dealer_bust?(hand_held)
-    if HandTotal.card_total(hand_held) > 21
+    if HandTotal.card_total(hand_held) > BLACKJACK_AMOUNT
       player.win_money(bet_placed.to_i)
       true
     end
@@ -280,7 +289,7 @@ class GameFlow
     begin
       dealer_hand_with_hole_card = [blackjack_deck.unturned_card, dealer.cards_held[1]]
       show_cards_on_table(dealer_hand_with_hole_card, player.cards_held)
-      break if HandTotal.card_total(player.cards_held) > 21
+      break if HandTotal.card_total(player.cards_held) > BLACKJACK_AMOUNT
     
       begin
         TextFormat.print_string "#{player.name}, would you like another card? Y or N"
@@ -289,7 +298,7 @@ class GameFlow
     
       if decision.downcase == 'y'
         puts `clear`
-        player.cards_held << blackjack_deck.deal_card
+        player.receive_card(blackjack_deck.deal_card)
       end
 
     end while decision.downcase == 'y'
@@ -311,7 +320,7 @@ class GameFlow
         return TextFormat.print_string "The dealer is bust. #{player.name} has won!" 
       end
   
-      dealer.cards_held << blackjack_deck.deal_card
+      dealer.receive_card(blackjack_deck.deal_card)
     end 
   end
   
