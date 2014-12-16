@@ -71,26 +71,33 @@ module Hand
   end
 end
 
-class Cards
-  attr_reader :suits, :values
-  def initialize
-    @suits = ["\e[31m♥\e[0m", "\e[31m♦\e[0m", '♠', '♣']
-    @values = ['A',2,3,4,5,6,7,8,9,'J','Q','K']
-  end  
+class Card < Struct.new(:suit, :value)
+  
+  SUITS = ["\e[31m♥\e[0m", "\e[31m♦\e[0m", '♠', '♣']
+  VALUES = ['A',2,3,4,5,6,7,8,9,'J','Q','K']
+  
+  attr_reader :suit, :value
+
+  def initialize(suit, value)
+    @suit = suit
+    @value = value
+  end
+
 end
 
 class Deck
-  attr_reader :deck
+  
+  attr_reader :cards
   
   def initialize
-    @deck = []
-    @suits_and_values = Cards.new
-    @card = @suits_and_values.suits.each do |suit|
-      @suits_and_values.values.each do |value|
-        @deck << [suit, value]
+    @cards = []
+    Card::SUITS.each do |suit|
+      Card::VALUES.each do |value|
+        cards << Card.new(suit, value)
       end
     end
   end
+  
 end
 
 class DeckHandler
@@ -101,7 +108,7 @@ class DeckHandler
   
   def replenish_deck(number_of_decks)
     self.game_deck = []
-    number_of_decks.times { game_deck << Deck.new.deck }
+    number_of_decks.times { game_deck << Deck.new.cards }
     game_deck.flatten!(1).shuffle!
   end
   
@@ -123,18 +130,18 @@ class DeckHandler
   end
   
   def unturned_card
-    ['*','*']
+    @unturned_card ||= Card.new("*", "*")
   end
   
   private
   
-  def make_card_image(card_array)
+  def make_card_image(card)
     card_image_array = []
     
     card_image_array << "┌─────┐"
-    card_image_array << "│#{card_array[1]}    │"
-    card_image_array << "│  #{card_array[0]}  │"
-    card_image_array << "│    #{card_array[1]}│"
+    card_image_array << "│#{card.value}    │"
+    card_image_array << "│  #{card.suit}  │"
+    card_image_array << "│    #{card.value}│"
     card_image_array << "└─────┘"
     
     card_image_array
