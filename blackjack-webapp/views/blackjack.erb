@@ -1,0 +1,25 @@
+<div id="bet-status">
+	<p>Player: <%= session[:player_name] %> &nbsp;&nbsp;&nbsp;&nbsp; Current Bet: £<%= session[:bet_made] %> &nbsp;&nbsp;&nbsp;&nbsp; Available: £<%= session[:account] %></p>
+</div>
+
+<h1>Dealer's Cards</h1>
+<% session[:dealer_hand].each do |card| %>
+	<p><%= card[1]%> of <%= card[0]%></p>
+<% end %>
+
+<br>
+
+<h1><%= session[:player_name] %>'s Cards</h1>
+<% session[:player_hand].each do |card| %>
+	<p><%= card[1]%> of <%= card[0]%></p>
+<% end %>
+
+<form class="form-inline" role="form" action='/player/hit' method='post'>
+	<div class="form-group">
+		<button type="submit" class="btn btn-success">Hit</button>
+	</div>
+<form class="form-inline" role="form" action='/player/stay' method='post'>
+	<div class="form-group">
+		<button type="submit" class="btn btn-warning">Stay</button>
+	</div>
+</form>

@@ -1,0 +1,16 @@
+<h1 class="cover-heading"><%= session[:player_name] %>, place your bet!</h1>
+<p class="lead">£<%= session[:account].to_i %> in your account</p>
+<p class="lead">
+	<form class="form-inline" role="form" action='/submit_bet' method='post'>
+	  <div class="input-group">
+	    <label class="sr-only" for="betInput">Amount</label>
+			<div class="input-group-addon">£</div>
+	    <input type="number" name="bet_made" class="form-control" id="nameInput" placeholder="Amount">
+	  </div>
+	  <button type="submit" class="btn btn-default">Make Bet</button>
+	</form>
+</p>
+
+<%if @error %>
+	<div class="alert alert-error"><%=@error%></div>
+<% end %>
