@@ -139,17 +139,39 @@ body {
 
 
 /*
- * Game
+ * My Custom Code
  */
+
+form, form div { display: inline; } 
 
 #bet-status {
 	background: rgba(200, 54, 54, 0.7);
 	height: 50px;
-	line-height: 50px; /* <-- this is what you must define */
+	line-height: 50px; 
 	vertical-align: middle;
 	border-radius: 10px;
 	margin-bottom: 75px;
 	font-size: 20px;
+}
+
+.positive-message {
+	background: rgba(54, 196, 54, 0.7);
+	height: 35px;
+	line-height: 35px; 
+	vertical-align: middle;
+	border-radius: 15px;
+	margin-top: 15px;
+	font-size: 16px;
+}
+
+.warning-message {
+	background: rgba(200, 54, 54, 0.7);
+	height: 35px;
+	line-height: 35px;
+	vertical-align: middle;
+	border-radius: 10px;
+	margin-top: 15px;
+	font-size: 16px;
 }
 
 

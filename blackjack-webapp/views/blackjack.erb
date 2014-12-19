@@ -14,12 +14,41 @@
 	<p><%= card[1]%> of <%= card[0]%></p>
 <% end %>
 
-<form class="form-inline" role="form" action='/player/hit' method='post'>
-	<div class="form-group">
-		<button type="submit" class="btn btn-success">Hit</button>
-	</div>
-<form class="form-inline" role="form" action='/player/stay' method='post'>
-	<div class="form-group">
-		<button type="submit" class="btn btn-warning">Stay</button>
-	</div>
-</form>
+<% if @show_hit_stay_buttons %>
+	<form class="form-inline" role="form" action='/player/hit' method='post'>
+		<div class="form-group">
+			<button type="submit" class="btn btn-success">Hit</button>
+		</div>
+	</form>
+	<form class="form-inline" role="form" action='/player/stay' method='post'>
+		<div class="form-group">
+			<button type="submit" class="btn btn-danger">Stay</button>
+		</div>
+	</form>
+<%end%>
+
+<% if @show_yes_no_buttons %>
+	Would you like to play again?
+	<form class="form-inline" role="form" action='/play_again_yes_action' method='post'>
+		<div class="form-group">
+			<button type="submit" class="btn btn-success">Yes</button>
+		</div>
+	</form>
+	<form class="form-inline" role="form" action='/play_again_no_action' method='post'>
+		<div class="form-group">
+			<button type="submit" class="btn btn-danger">No</button>
+		</div>
+	</form>
+<%end%>
+
+<%if @bust %>
+	<div class="warning-message"><%=@bust%></div>
+<% end %>
+
+<%if @stick %>
+	<div class="positive-message"><%=@stick%></div>
+<% end %>
+
+<%if @account_empty %>
+	<div class="warning-message"><%=@account_empty%></div>
+<% end %>
