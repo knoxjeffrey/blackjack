@@ -5,6 +5,15 @@ require 'pry'
 set :sessions, true
 
 helpers do
+  def valid_name_entered?
+    if session[:player_name] == ''
+      @error = "You must enter a name"
+    else
+      session[:account] = 500
+      redirect '/make_bet'
+    end
+  end
+  
   def correct_money_entered?(the_bet_value, bank_account)
     if the_bet_value =~ /\D/
       @error = "You must enter a valid number"
@@ -13,6 +22,7 @@ helpers do
     elsif (bank_account - the_bet_value.to_i) < 0 
       @error =  "You do not have enough funds for that bet. Please enter a new bet"
     else
+      session[:bet_made] = session[:bet_made].to_i
       redirect '/blackjack'
     end
   end
@@ -38,11 +48,58 @@ helpers do
   
     card_value_counter
   end
+  
+  def is_dealer_sticking?(dealer_total)
+    dealer_total.between?(17,21)
+  end
+  
+  def is_dealer_bust?(dealer_total)
+    if dealer_total > 21 
+      true
+    end
+  end
+  
+  def dealer_playing
+    @show_hit_stay_buttons = false
+    dealer_total = card_total(session[:dealer_hand])
+    if is_dealer_bust?(dealer_total)
+      session[:account] += session[:bet_made]
+      @player_won = "The dealer is bust. #{session[:player_name]} has won!"
+      @show_yes_no_buttons = true
+    elsif is_dealer_sticking?(dealer_total)
+      redirect '/game_result'
+    elsif session[:dealer_card_hidden] == 'hidden'
+      session[:dealer_card_hidden] = 'showing'
+      @dealer_playing = true
+    else
+      session[:dealer_hand] << session[:deck].pop
+      @dealer_playing = true
+    end
+  end
+  
+  def declare_result
+    if card_total(session[:player_hand]) > card_total(session[:dealer_hand])
+      session[:account] += session[:bet_made]
+      @show_hit_stay_buttons = false
+      @show_yes_no_buttons = true
+      @player_won = "Congratulations #{session[:player_name]}, you have won the game!"
+    elsif card_total(session[:player_hand]) < card_total(session[:dealer_hand])
+      session[:account] -= session[:bet_made]
+      @show_hit_stay_buttons = false
+      @show_yes_no_buttons = true
+      @player_lost = "Sorry #{session[:player_name]}, the dealer has won the game."
+    else
+      @show_hit_stay_buttons = false
+      @show_yes_no_buttons = true
+      @player_tied = "It's a tie! Have a go at beating the dealer again #{session[:player_name]}."
+    end
+  end
 end
 
 before do
   @show_hit_stay_buttons = true
   @show_yes_no_buttons = false
+  @dealer_card_hidden = true
 end
 
 get '/' do
@@ -57,8 +114,9 @@ end
 
 post '/submit_name' do
   session[:player_name] = params[:player_name]
-  session[:account] = 500
-  redirect '/make_bet'
+  valid_name_entered?
+  
+  erb :home
 end
 
 get '/make_bet' do
@@ -67,7 +125,7 @@ get '/make_bet' do
 end
 
 post '/submit_bet' do
-  session[:bet_made] = params[:bet_made].to_i
+  session[:bet_made] = params[:bet_made]
   correct_money_entered?(session[:bet_made], session[:account])
  
   erb :make_bet
@@ -75,6 +133,8 @@ end
 
 get '/blackjack' do
   redirect '/' if !session[:player_name]
+  
+  session[:dealer_card_hidden] = 'hidden'
   
   suits = ['H', 'D', 'S', 'C']
   values = ['A',2,3,4,5,6,7,8,9,'J','Q','K']
@@ -86,19 +146,24 @@ get '/blackjack' do
   2.times { session[:player_hand] << session[:deck].pop }
   2.times { session[:dealer_hand] << session[:deck].pop }
   
+  session[:stored_dealer_hand] = session[:dealer_hand]
+  
+  session[:dealer_hand] = [['dealer','cover'],session[:dealer_hand][1]]
+  
   if card_total(session[:player_hand]) == 21
     session[:account] += session[:bet_made]
     @show_hit_stay_buttons = false
     @show_yes_no_buttons = true
-    @stick = "#{session[:player_name]} has Blackjack!"
+    @player_won = "#{session[:player_name]} has Blackjack!"
   end
   
   erb :blackjack
 end
 
-post '/player/hit' do
+post '/player_hit' do
   session[:player_hand] << session[:deck].pop
   if (card_total(session[:player_hand]) > 21) && (session[:account] - session[:bet_made] == 0)
+    session[:account] -= session[:bet_made]
     @show_hit_stay_buttons = false
     @account_empty = "Sorry #{session[:player_name]}, you lost and are out of cash. Restart game to have another go."
     session[:player_name] = nil
@@ -111,14 +176,28 @@ post '/player/hit' do
   erb :blackjack
 end  
 
-post '/player/stay' do
+post '/player_stay' do
+  session[:dealer_hand] = session[:stored_dealer_hand]
   @show_hit_stay_buttons = false
-  @stick = "#{session[:player_name]} is sticking. Time for the dealer to play."
+  dealer_playing
+  
   erb :blackjack
 end  
 
+get '/dealer_hit' do
+  @dealer_playing = false
+  dealer_playing
+  
+  erb :blackjack
+end
+
+get '/game_result' do
+  declare_result
+  erb :blackjack
+end
+
 post '/play_again_yes_action' do
-    redirect 'make_bet'
+    redirect '/make_bet'
 end
 
 post '/play_again_no_action' do

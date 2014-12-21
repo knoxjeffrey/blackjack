@@ -1,26 +1,69 @@
+<%
+def values_and_suits_to_match_card_images(value, suit)
+	
+	image_value = case value
+		
+	when 'K'
+		'king'
+	when 'Q'
+		'queen'
+	when 'J'
+		'jack'
+	when 'A'
+		'ace'
+	else
+		value
+	end
+	
+	image_suit = case suit
+	
+	when 'H'
+		'hearts'
+	when 'D'
+		'diamonds'
+	when 'C'
+		'clubs'
+	when 'S'
+		'spades'
+	else
+		suit
+	end
+	
+	"/images/cards/#{image_value}_of_#{image_suit}.png"
+	
+end
+%>
+
+<% if @dealer_playing %>
+	<script>setInterval(function () {window.location = "/dealer_hit"}, 1500);</script>
+<% end %>
+
 <div id="bet-status">
-	<p>Player: <%= session[:player_name] %> &nbsp;&nbsp;&nbsp;&nbsp; Current Bet: £<%= session[:bet_made] %> &nbsp;&nbsp;&nbsp;&nbsp; Available: £<%= session[:account] %></p>
+	<p>Player: <%= session[:player_name] %> &nbsp;&nbsp;&nbsp;&nbsp; Bet Placed: £<%= session[:bet_made] %> &nbsp;&nbsp;&nbsp;&nbsp; Available: £<%= session[:account] %></p>
 </div>
 
 <h1>Dealer's Cards</h1>
 <% session[:dealer_hand].each do |card| %>
-	<p><%= card[1]%> of <%= card[0]%></p>
+	<img class="card-images" src="<%= values_and_suits_to_match_card_images(card[1], card[0]) %>"; />
 <% end %>
 
 <br>
 
 <h1><%= session[:player_name] %>'s Cards</h1>
 <% session[:player_hand].each do |card| %>
-	<p><%= card[1]%> of <%= card[0]%></p>
+	<img class="card-images" src="<%= values_and_suits_to_match_card_images(card[1], card[0]) %>"; />
 <% end %>
 
+<br>
+<br>
+
 <% if @show_hit_stay_buttons %>
-	<form class="form-inline" role="form" action='/player/hit' method='post'>
+	<form class="form-inline" role="form" action='/player_hit' method='post'>
 		<div class="form-group">
 			<button type="submit" class="btn btn-success">Hit</button>
 		</div>
 	</form>
-	<form class="form-inline" role="form" action='/player/stay' method='post'>
+	<form class="form-inline" role="form" action='/player_stay' method='post'>
 		<div class="form-group">
 			<button type="submit" class="btn btn-danger">Stay</button>
 		</div>
@@ -45,10 +88,19 @@
 	<div class="warning-message"><%=@bust%></div>
 <% end %>
 
-<%if @stick %>
-	<div class="positive-message"><%=@stick%></div>
-<% end %>
-
 <%if @account_empty %>
 	<div class="warning-message"><%=@account_empty%></div>
 <% end %>
+
+<%if @player_won %>
+	<div class="positive-message"><%=@player_won%></div>
+<% end %>
+
+<%if @player_lost %>
+	<div class="warning-message"><%=@player_lost%></div>
+<% end %>
+
+<%if @player_tied %>
+	<div class="warning-message"><%=@game_tied%></div>
+<% end %>
+

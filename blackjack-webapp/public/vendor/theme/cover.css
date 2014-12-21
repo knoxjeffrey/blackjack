@@ -130,6 +130,7 @@ body {
 
 .cover {
   padding: 0 20px;
+	margin-top: 120px;
 }
 
 .cover .btn-lg {
@@ -144,13 +145,17 @@ body {
 
 form, form div { display: inline; } 
 
+.card-images {
+	height: 100px;
+}
+
 #bet-status {
 	background: rgba(200, 54, 54, 0.7);
 	height: 50px;
 	line-height: 50px; 
 	vertical-align: middle;
 	border-radius: 10px;
-	margin-bottom: 75px;
+	margin-bottom: 55px;
 	font-size: 20px;
 }
 
@@ -201,7 +206,7 @@ form, form div { display: inline; }
   }
   /* Start the vertical centering */
   .site-wrapper-inner {
-    vertical-align: middle;
+  /* vertical-align: middle; */
   }
   /* Handle the widths */
   .masthead,
