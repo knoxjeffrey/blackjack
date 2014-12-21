@@ -84,23 +84,15 @@ end
 	</form>
 <%end%>
 
-<%if @bust %>
-	<div class="warning-message"><%=@bust%></div>
+<%if @lose %>
+	<div class="warning-message"><%=@lose%></div>
 <% end %>
 
-<%if @account_empty %>
-	<div class="warning-message"><%=@account_empty%></div>
+<%if @win %>
+	<div class="positive-message"><%=@win%></div>
 <% end %>
 
-<%if @player_won %>
-	<div class="positive-message"><%=@player_won%></div>
-<% end %>
-
-<%if @player_lost %>
-	<div class="warning-message"><%=@player_lost%></div>
-<% end %>
-
-<%if @player_tied %>
-	<div class="warning-message"><%=@game_tied%></div>
+<%if @tied %>
+	<div class="warning-message"><%=@tied%></div>
 <% end %>
 
