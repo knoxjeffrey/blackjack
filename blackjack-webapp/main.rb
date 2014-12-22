@@ -7,22 +7,20 @@ set :sessions, true
 BLACKJACK = 21
 STICK_MIN = 17
 
-helpers do
+helpers do  
   def valid_name_entered?
-    if session[:player_name] == ''
-      @error = "You must enter a name"
-    else
-      session[:account] = 500
-      redirect '/make_bet'
-    end
+    return @error = "You must enter a name" if session[:player_name].empty? 
+    session[:account] = 500 
+    redirect '/make_bet'
+  
   end
   
-  def correct_money_entered?(the_bet_value, bank_account)
-    if the_bet_value =~ /\D/
+  def correct_money_entered?
+    if session[:bet_made] =~ /\D/
       @error = "You must enter a valid number"
-    elsif the_bet_value.to_i == 0
+    elsif session[:bet_made].to_i == 0
       @error =  "You must enter a value higher than zero"
-    elsif (bank_account - the_bet_value.to_i) < 0 
+    elsif (session[:account] - session[:bet_made].to_i) < 0 
       @error =  "You do not have enough funds for that bet. Please enter a new bet"
     else
       session[:bet_made] = session[:bet_made].to_i
@@ -30,14 +28,49 @@ helpers do
     end
   end
   
+  def match_card_image_name
+    suit_and_value = session[:deck].pop
+    
+  	image_suit = case suit_and_value[0]
+	
+  	when 'H'
+  		'hearts'
+  	when 'D'
+  		'diamonds'
+  	when 'C'
+  		'clubs'
+  	when 'S'
+  		'spades'
+  	else
+  		suit_and_value[0]
+  	end
+    
+  	image_value = case suit_and_value[1]
+		
+  	when 'K'
+  		'king'
+  	when 'Q'
+  		'queen'
+  	when 'J'
+  		'jack'
+  	when 'A'
+  		'ace'
+  	else
+  		suit_and_value[1]
+  	end
+    
+    [image_value, image_suit]
+    
+  end
+  
   def card_total(cards_held_array)
-    value_array = cards_held_array.map { |v| v[1] }
+    value_array = cards_held_array.map { |card_array| card_array[0] }
     card_value_counter = 0
   
     value_array.each do |value|
       if value.is_a? Integer
         card_value_counter += value
-      elsif value != 'A'
+      elsif value != 'ace'
         card_value_counter += 10
       else
         card_value_counter += 11
@@ -45,7 +78,7 @@ helpers do
     end
   
     #decided total based on total number of aces. Will keep adjusting ace value to 1 until the toal is 21 or under
-    value_array.select { |v| v == 'A'}.count.times do
+    value_array.select { |value| value == 'ace'}.count.times do
       card_value_counter -= 10 if card_value_counter > BLACKJACK
     end
   
@@ -87,7 +120,7 @@ helpers do
       session[:dealer_card_hidden] = 'showing'
       @dealer_playing = true
     else
-      session[:dealer_hand] << session[:deck].pop
+      session[:dealer_hand] << match_card_image_name
       @dealer_playing = true
     end
   end
@@ -143,7 +176,7 @@ end
 
 post '/submit_bet' do
   session[:bet_made] = params[:bet_made]
-  correct_money_entered?(session[:bet_made], session[:account])
+  correct_money_entered?
  
   erb :make_bet
 end
@@ -160,12 +193,12 @@ get '/blackjack' do
   session[:player_hand] = []
   session[:dealer_hand] = []
   
-  2.times { session[:player_hand] << session[:deck].pop }
-  2.times { session[:dealer_hand] << session[:deck].pop }
+  2.times {session[:player_hand] << match_card_image_name}
+  2.times {session[:dealer_hand] << match_card_image_name}
   
   session[:stored_dealer_hand] = session[:dealer_hand]
   
-  session[:dealer_hand] = [['dealer','cover'],session[:dealer_hand][1]]
+  session[:dealer_hand] = [['cover', 'dealer'], session[:dealer_hand][1]]
   
   if card_total(session[:player_hand]) == BLACKJACK
     session[:account] += session[:bet_made]
@@ -177,7 +210,7 @@ get '/blackjack' do
 end
 
 post '/player_hit' do
-  session[:player_hand] << session[:deck].pop
+  session[:player_hand] << match_card_image_name
   if (card_total(session[:player_hand]) > BLACKJACK) && (session[:account] - session[:bet_made] == 0)
     session[:account] -= session[:bet_made]
     @show_hit_stay_buttons = false
