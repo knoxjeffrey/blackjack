@@ -6,11 +6,12 @@ set :sessions, true
 
 BLACKJACK = 21
 STICK_MIN = 17
+ACCOUNT_AMOUNT = 500
 
 helpers do  
   def valid_name_entered?
     return @error = "You must enter a name" if session[:player_name].empty? 
-    session[:account] = 500 
+    session[:account] = ACCOUNT_AMOUNT 
     redirect '/make_bet'
   
   end
@@ -20,6 +21,7 @@ helpers do
       @error = "You must enter a valid number"
     elsif session[:bet_made].to_i == 0
       @error =  "You must enter a value higher than zero"
+      halt erb(:make_bet)
     elsif (session[:account] - session[:bet_made].to_i) < 0 
       @error =  "You do not have enough funds for that bet. Please enter a new bet"
     else
@@ -115,13 +117,13 @@ helpers do
       winner("The dealer is bust. #{session[:player_name]} has won!")
       @show_yes_no_buttons = true
     elsif is_dealer_sticking?(dealer_total)
-      redirect '/game_result'
+      redirect '/blackjack/game_result'
     elsif session[:dealer_card_hidden] == 'hidden'
       session[:dealer_card_hidden] = 'showing'
-      @dealer_playing = true
+      @is_dealer_playing = true
     else
       session[:dealer_hand] << match_card_image_name
-      @dealer_playing = true
+      @is_dealer_playing = true
     end
   end
   
@@ -162,7 +164,7 @@ get '/home' do
   redirect '/'
 end
 
-post '/submit_name' do
+post '/' do
   session[:player_name] = params[:player_name]
   valid_name_entered?
   
@@ -174,7 +176,7 @@ get '/make_bet' do
   erb :make_bet
 end
 
-post '/submit_bet' do
+post '/make_bet' do
   session[:bet_made] = params[:bet_made]
   correct_money_entered?
  
@@ -209,7 +211,7 @@ get '/blackjack' do
   erb :blackjack
 end
 
-post '/player_hit' do
+post '/blackjack/player_hit' do
   session[:player_hand] << match_card_image_name
   if (card_total(session[:player_hand]) > BLACKJACK) && (session[:account] - session[:bet_made] == 0)
     session[:account] -= session[:bet_made]
@@ -221,34 +223,34 @@ post '/player_hit' do
     loser("#{session[:player_name]} is bust and has lost the game.")
     session[:account] -= session[:bet_made]
   end
-  erb :blackjack
+  erb :blackjack, layout: false
 end  
 
-post '/player_stay' do
+post '/blackjack/player_stay' do
   session[:dealer_hand] = session[:stored_dealer_hand]
   @show_hit_stay_buttons = false
-  dealer_playing
+  redirect '/blackjack/dealer'
   
-  erb :blackjack
+  erb :blackjack, layout: false
 end  
 
-get '/dealer_hit' do
-  @dealer_playing = false
+get '/blackjack/dealer' do
+  @is_dealer_playing = false
   dealer_playing
   
-  erb :blackjack
+  erb :blackjack, layout: false
 end
 
-get '/game_result' do
+get '/blackjack/game_result' do
   declare_result
-  erb :blackjack
+  erb :blackjack, layout: false
 end
 
-post '/play_again_yes_action' do
+post '/blackjack/play_again_yes_action' do
     redirect '/make_bet'
 end
 
-post '/play_again_no_action' do
+post '/blackjack/play_again_no_action' do
   session[:player_name] = nil
   redirect '/'
 end
